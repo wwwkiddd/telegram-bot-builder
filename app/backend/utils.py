@@ -3,12 +3,14 @@ import shutil
 from uuid import uuid4
 from pathlib import Path
 from dotenv import set_key
-
 from app.backend.models import BotRequest
 
+from aiogram import Bot
+from app.shared.subscription_db import set_subscription  # ✅ импортируем свою функцию
 
 BOTS_DIR = os.getenv("BOTS_DIR", "app/bots_storage")
 TEMPLATE_PATH = os.getenv("TEMPLATE_BOT_DIR", "app/template_bot")
+
 
 async def create_bot_instance(bot_data: BotRequest) -> str:
     bot_id = str(uuid4())[:8]
@@ -31,4 +33,12 @@ async def create_bot_instance(bot_data: BotRequest) -> str:
     # Запускаем контейнер
     os.system(f"docker run -d --env-file {env_path} --name bot_{bot_id} bot_{bot_id}")
 
-    return bot_id
+    # Получаем username бота
+    bot = Bot(token=bot_data.bot_token)
+    me = await bot.get_me()
+    bot_username = me.username
+
+    # Сохраняем статус подписки: активен, не оплачен
+    await set_subscription(bot_id=bot_id, active=True, paid=False)
+
+    return f"https://t.me/{bot_username}"
