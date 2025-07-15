@@ -3,15 +3,21 @@ from datetime import datetime, timedelta
 
 DB_FILE = "../backend/subscriptions.db"
 
-def init_db():
-    with sqlite3.connect(DB_FILE) as conn:
-        c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS subscriptions (
-            user_id INTEGER PRIMARY KEY,
-            bot_id TEXT,
-            expires_at TEXT
-        )''')
-        conn.commit()
+async def set_subscription(bot_id: str, active: bool, paid: bool):
+    async with aiosqlite.connect("app/shared/subscriptions.db") as db:
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS subscriptions (
+                bot_id TEXT PRIMARY KEY,
+                created_at TEXT,
+                active INTEGER,
+                paid INTEGER
+            )
+        """)
+        await db.execute("""
+            INSERT OR REPLACE INTO subscriptions (bot_id, created_at, active, paid)
+            VALUES (?, ?, ?, ?)
+        """, (bot_id, datetime.now().isoformat(), int(active), int(paid)))
+        await db.commit()
 
 def set_subscription(user_id: int, bot_id: str, months: int):
     expires = (datetime.utcnow() + timedelta(days=30 * months)).isoformat()
